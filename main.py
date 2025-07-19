@@ -27,8 +27,8 @@ app.add_middleware(
 # === Detection Service ===
 class SeedDetectionService:
     def __init__(self):
-        self.api_key = os.getenv("ROBOFLOW_API_KEY", "NVfp8h9atJEAWzsw1eZ0")  # Replace with your key if needed
-        self.model_id = "seed-classification-89b7c/5"  # Replace with your correct seed model ID
+        self.api_key = os.getenv("ROBOFLOW_API_KEY", "NVfp8h9atJEAWzsw1eZ0")  
+        self.model_id = "seed-classification-89b7c/9"  
         self.base_url = "https://detect.roboflow.com"
 
     def create_annotated_image(self, image: Image.Image, predictions: list) -> str:
@@ -93,7 +93,7 @@ class SeedDetectionService:
             result = response.json()
             predictions = result.get("predictions", [])
 
-            # Sort predictions by confidence
+            
             predictions = sorted(predictions, key=lambda x: x['confidence'], reverse=True)
 
             annotated_b64 = None
