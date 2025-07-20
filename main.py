@@ -33,6 +33,7 @@ class SeedDetectionService:
 
     def create_annotated_image(self, image: Image.Image, predictions: list) -> str:
         draw = ImageDraw.Draw(image)
+
         try:
             font_paths = [
                 "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
@@ -63,13 +64,31 @@ class SeedDetectionService:
             draw.text((left + 5, top - th - 5), label, fill="white", font=font)
 
         buffer = BytesIO()
-        image.save(buffer, format="JPEG", quality=95)
+        rgb_image = image.convert("RGB")  # FIX: convert RGBA to RGB for JPEG
+        rgb_image.save(buffer, format="JPEG", quality=95)
         return base64.b64encode(buffer.getvalue()).decode()
+
+    def resize_image_if_needed(self, image: Image.Image, max_size=640) -> Image.Image:
+        """Resize image if it exceeds max_size (either width or height)."""
+        width, height = image.size
+        if max(width, height) > max_size:
+            scale = max_size / float(max(width, height))
+            new_size = (int(width * scale), int(height * scale))
+            return image.resize(new_size, Image.ANTIALIAS)
+        return image
 
     async def detect_seeds(self, file: UploadFile) -> Dict[str, Any]:
         try:
             image_bytes = await file.read()
-            img_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            image = Image.open(BytesIO(image_bytes))
+
+            # Resize image for faster Roboflow detection
+            image = self.resize_image_if_needed(image)
+
+            # Convert back to bytes
+            buffer = BytesIO()
+            image.save(buffer, format="JPEG")
+            img_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
             url = f"{self.base_url}/{self.model_id}"
             params = {
@@ -92,14 +111,11 @@ class SeedDetectionService:
 
             result = response.json()
             predictions = result.get("predictions", [])
-
-            
             predictions = sorted(predictions, key=lambda x: x['confidence'], reverse=True)
 
             annotated_b64 = None
             if predictions:
-                img = Image.open(BytesIO(image_bytes))
-                annotated_b64 = self.create_annotated_image(img, predictions)
+                annotated_b64 = self.create_annotated_image(image, predictions)
 
             return {
                 "success": True,
@@ -121,7 +137,6 @@ class SeedDetectionService:
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-
 
 # === Initialize Service ===
 seed_service = SeedDetectionService()
