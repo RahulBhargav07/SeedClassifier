@@ -74,7 +74,7 @@ class SeedDetectionService:
         if max(width, height) > max_size:
             scale = max_size / float(max(width, height))
             new_size = (int(width * scale), int(height * scale))
-            return image.resize(new_size, Image.ANTIALIAS)
+            return image.resize(new_size, Image.LANCZOS)
         return image
 
     async def detect_seeds(self, file: UploadFile) -> Dict[str, Any]:
